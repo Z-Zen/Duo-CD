@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Duo Calculator - Crimson Desert</title>
+<style>
+  :root {
+    --bg: #1a1016;
+    --bg2: #241a20;
+    --bg3: #2e222a;
+    --accent: #c4935a;
+    --accent2: #e8b878;
+    --red: #c44040;
+    --redlt: #e85050;
+    --green: #5a9a5a;
+    --yellow: #c4a830;
+    --yellowlt: #e8cc40;
+    --text: #e8ddd0;
+    --text2: #a89888;
+    --border: #4a3a40;
+    --gold: #ffd700;
+    --blue: #5080c0;
+    --bluelt: #70a0e0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 0.8rem; }
+  h1 { text-align: center; color: var(--accent2); font-size: 1.7rem; margin-bottom: 0.2rem; letter-spacing: 2px; }
+  .subtitle { text-align: center; color: var(--text2); font-size: 0.82rem; margin-bottom: 1.2rem; }
+  .container { max-width: 920px; margin: 0 auto; }
+  .card { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.1rem; margin-bottom: 0.9rem; }
+  .card h2 { color: var(--accent); font-size: 1.05rem; margin-bottom: 0.7rem; border-bottom: 1px solid var(--border); padding-bottom: 0.35rem; }
+  .info-text { color: var(--text2); font-size: 0.82rem; }
+  .flex-between { display: flex; justify-content: space-between; align-items: center; }
+
+  /* Card grid */
+  .card-grid { display: flex; flex-direction: column; gap: 0.35rem; }
+  .card-row { display: flex; gap: 0.3rem; flex-wrap: wrap; align-items: center; }
+  .card-row-label { width: 22px; font-size: 0.7rem; font-weight: bold; text-align: center; flex-shrink: 0; }
+  .card-row-label.rl { color: var(--redlt); }
+  .card-row-label.yl { color: var(--yellowlt); }
+  .card-btn {
+    width: 44px; height: 54px; border: 2px solid var(--border); border-radius: 7px;
+    font-size: 1.15rem; font-weight: bold; cursor: pointer; transition: all 0.12s;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .card-btn.red-card { background: #2a1418; color: var(--redlt); }
+  .card-btn.red-card:hover { border-color: var(--redlt); background: #3a1c20; }
+  .card-btn.yellow-card { background: #2a2418; color: var(--yellowlt); }
+  .card-btn.yellow-card:hover { border-color: var(--yellowlt); background: #3a3020; }
+  .card-btn.selected { box-shadow: 0 0 10px rgba(232,184,120,0.4); transform: scale(1.05); }
+  .card-btn.red-card.selected { border-color: var(--redlt); background: #4a2028; }
+  .card-btn.yellow-card.selected { border-color: var(--yellowlt); background: #4a3c20; }
+  .card-btn.used { opacity: 0.2; cursor: not-allowed; pointer-events: none; }
+
+  /* Hand display */
+  .hand-display { display: flex; gap: 0.6rem; align-items: center; margin: 0.6rem 0; flex-wrap: wrap; }
+  .hand-card {
+    width: 52px; height: 66px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.3rem; font-weight: bold; cursor: pointer; border: 2px solid; transition: all 0.12s;
+  }
+  .hand-card.empty { border-style: dashed; border-color: var(--border); color: var(--text2); }
+  .hand-card.red-card { border-color: var(--redlt); background: linear-gradient(135deg, #3a1820, #2a1018); color: var(--redlt); }
+  .hand-card.yellow-card { border-color: var(--yellowlt); background: linear-gradient(135deg, #3a3018, #2a2410); color: var(--yellowlt); }
+  .hand-card:not(.empty):hover { opacity: 0.7; }
+  .hand-arrow { color: var(--text2); font-size: 1.2rem; }
+  .hand-result-inline { display: flex; flex-direction: column; }
+  .hand-name { font-size: 1.2rem; font-weight: bold; }
+  .hand-korean { color: var(--text2); font-size: 0.8rem; }
+  .rank-prime { color: #ff6090; }
+  .rank-superior { color: var(--gold); }
+  .rank-tenpair { color: var(--gold); }
+  .rank-pair { color: #e8a040; }
+  .rank-named { color: #80c0e0; }
+  .rank-nine { color: #88cc88; }
+  .rank-points { color: var(--text); }
+  .rank-zero { color: var(--red); }
+  .rank-special { color: #c080e0; }
+
+  /* Cheat mode toggle */
+  .mode-toggle { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.8rem; }
+  .toggle-switch {
+    position: relative; width: 48px; height: 26px; background: var(--bg3); border: 2px solid var(--border);
+    border-radius: 13px; cursor: pointer; transition: all 0.2s;
+  }
+  .toggle-switch.active { background: rgba(80,128,192,0.3); border-color: var(--blue); }
+  .toggle-knob {
+    position: absolute; top: 2px; left: 2px; width: 18px; height: 18px;
+    background: var(--text2); border-radius: 50%; transition: all 0.2s;
+  }
+  .toggle-switch.active .toggle-knob { left: 24px; background: var(--bluelt); }
+  .toggle-label { font-size: 0.9rem; color: var(--text2); }
+  .toggle-switch.active + .toggle-label { color: var(--bluelt); }
+  .cheat-badge {
+    display: inline-block; font-size: 0.65rem; padding: 0.1rem 0.4rem;
+    background: rgba(80,128,192,0.2); border: 1px solid var(--blue); color: var(--bluelt);
+    border-radius: 4px; margin-left: 0.3rem; vertical-align: middle;
+  }
+
+  /* Opponents */
+  .opp-row { display: flex; gap: 0.8rem; flex-wrap: wrap; margin-top: 0.5rem; }
+  .opp-box { flex: 1; min-width: 200px; background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 0.7rem; }
+  .opp-box h3 { font-size: 0.9rem; color: var(--text2); margin-bottom: 0.4rem; }
+  .opp-card-row { display: flex; gap: 0.25rem; flex-wrap: wrap; }
+  .opp-card-btn {
+    width: 36px; height: 42px; border: 2px solid var(--border); border-radius: 5px;
+    font-size: 0.9rem; font-weight: bold; cursor: pointer; transition: all 0.1s;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .opp-card-btn.red-card { background: #2a1418; color: var(--redlt); }
+  .opp-card-btn.yellow-card { background: #2a2418; color: var(--yellowlt); }
+  .opp-card-btn.red-card:hover { border-color: var(--redlt); }
+  .opp-card-btn.yellow-card:hover { border-color: var(--yellowlt); }
+  .opp-card-btn.selected.red-card { border-color: var(--redlt); background: #4a2028; box-shadow: 0 0 6px rgba(232,80,80,0.3); }
+  .opp-card-btn.selected.yellow-card { border-color: var(--yellowlt); background: #4a3c20; box-shadow: 0 0 6px rgba(232,204,64,0.3); }
+  .opp-card-btn.used { opacity: 0.2; pointer-events: none; }
+  .opp-hand-eval { margin-top: 0.4rem; font-size: 0.85rem; }
+
+  .num-opponents { display: flex; gap: 0.4rem; margin-bottom: 0.6rem; }
+  .num-btn { padding: 0.35rem 1rem; border: 2px solid var(--border); border-radius: 6px; background: var(--bg3); color: var(--text); font-size: 0.95rem; cursor: pointer; }
+  .num-btn:hover { border-color: var(--accent); }
+  .num-btn.active { border-color: var(--accent2); background: linear-gradient(135deg, #4a3020, #3a2518); color: var(--accent2); }
+  .clear-btn { padding: 0.25rem 0.7rem; border: 1px solid var(--border); border-radius: 5px; background: var(--bg3); color: var(--text2); cursor: pointer; font-size: 0.78rem; }
+  .clear-btn:hover { border-color: var(--red); color: var(--red); }
+
+  /* Results */
+  .results-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; }
+  @media (max-width: 550px) { .results-grid { grid-template-columns: 1fr; } }
+  .result-box { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 0.8rem; text-align: center; }
+  .result-box .label { font-size: 0.75rem; color: var(--text2); margin-bottom: 0.2rem; text-transform: uppercase; letter-spacing: 1px; }
+  .result-box .value { font-size: 1.8rem; font-weight: bold; }
+  .win-high { color: var(--green); }
+  .win-mid { color: var(--accent2); }
+  .win-low { color: var(--red); }
+  .prob-bar-container { margin-top: 0.7rem; }
+  .prob-bar-label { display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--text2); margin-bottom: 0.15rem; }
+  .prob-bar { height: 8px; background: var(--bg); border-radius: 4px; overflow: hidden; margin-bottom: 0.2rem; }
+  .prob-bar-fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
+  .opp-hands-detail { font-size: 0.78rem; color: var(--text2); margin-bottom: 0.6rem; line-height: 1.4; }
+  .recommendation { margin-top: 0.8rem; padding: 0.8rem; border-radius: 8px; text-align: center; font-size: 1rem; font-weight: bold; }
+  .rec-allin { background: rgba(90,154,90,0.15); border: 1px solid var(--green); color: var(--green); }
+  .rec-raise { background: rgba(200,150,80,0.12); border: 1px solid var(--accent); color: var(--accent2); }
+  .rec-call { background: rgba(168,152,136,0.1); border: 1px solid var(--text2); color: var(--text); }
+  .rec-fold { background: rgba(196,64,64,0.12); border: 1px solid var(--red); color: var(--red); }
+  .threats { margin-top: 0.6rem; padding: 0.6rem; background: var(--bg3); border-radius: 6px; font-size: 0.82rem; }
+  .threats summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+  .threats ul { margin: 0.3rem 0 0 1.2rem; color: var(--text2); }
+  .threats li { margin-bottom: 0.15rem; }
+
+  /* Cheat advisor table */
+  .cheat-pick-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  .cheat-pick-table th { color: var(--accent); font-weight: 600; padding: 0.35rem 0.4rem; border-bottom: 1px solid var(--border); text-align: left; }
+  .cheat-pick-table td { padding: 0.3rem 0.4rem; border-bottom: 1px solid rgba(74,58,64,0.5); }
+  .cheat-pick-table tr:hover { background: rgba(80,128,192,0.06); }
+  .cheat-pick-table tr.best-pick { background: rgba(90,154,90,0.12); }
+  .cheat-pick-table tr.best-pick td { color: var(--green); font-weight: 600; }
+  .pick-bar { display: inline-block; height: 6px; border-radius: 3px; vertical-align: middle; margin-left: 0.3rem; }
+  .crown { color: var(--gold); margin-right: 0.2rem; }
+
+  /* Reference */
+  table.ref-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+  .ref-table th, .ref-table td { padding: 0.35rem 0.5rem; border-bottom: 1px solid var(--border); text-align: left; }
+  .ref-table th { color: var(--accent); font-weight: 600; }
+  .ref-table tr:hover { background: rgba(200,150,80,0.05); }
+  .collapse-btn { background: none; border: none; color: var(--text2); cursor: pointer; font-size: 0.82rem; }
+  .collapse-btn:hover { color: var(--accent); }
+  .collapsed .collapse-content { display: none; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>DUO CALCULATOR</h1>
+  <p class="subtitle">Crimson Desert - Seotda Hand Analyzer</p>
+
+  <!-- MODE TOGGLE -->
+  <div class="mode-toggle">
+    <div class="toggle-switch" id="cheat-toggle" onclick="toggleCheatMode()">
+      <div class="toggle-knob"></div>
+    </div>
+    <span class="toggle-label" id="cheat-label">Cheat Mode (you are dealing)</span>
+  </div>
+
+  <!-- YOUR HAND -->
+  <div class="card">
+    <div class="flex-between">
+      <h2>Your Cards</h2>
+      <button class="clear-btn" onclick="clearAll()">Clear All</button>
+    </div>
+    <p class="info-text" id="player-instructions" style="margin-bottom:0.4rem"></p>
+    <div class="card-grid" id="player-grid"></div>
+    <div class="hand-display" id="player-hand"></div>
+  </div>
+
+  <!-- OPPONENTS -->
+  <div class="card">
+    <h2>Opponents</h2>
+    <p class="info-text" style="margin-bottom:0.5rem">Number of opponents:</p>
+    <div class="num-opponents" id="num-opp-btns"></div>
+    <div id="opponents-area"></div>
+  </div>
+
+
+  <!-- CHEAT ADVISOR -->
+  <div class="card" id="cheat-card" style="display:none">
+    <h2>Best Card to Pick <span class="cheat-badge">CHEAT</span></h2>
+    <p class="info-text" style="margin-bottom:0.5rem">You pick 1 card, the other is dealt randomly. Ranked by expected win % across all possible random second cards.</p>
+    <div id="cheat-advisor-content"></div>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="card" id="results-card" style="display:none">
+    <h2>Analysis</h2>
+    <div class="results-grid" id="results-grid"></div>
+    <div id="prob-bars"></div>
+    <div id="recommendation"></div>
+    <div id="threats-section"></div>
+  </div>
+
+  <!-- REFERENCE -->
+  <div class="card collapsed" id="ref-card">
+    <div class="flex-between">
+      <h2 style="margin-bottom:0;border:none;padding-bottom:0">Hand Reference</h2>
+      <button class="collapse-btn" onclick="toggleRef()">Show</button>
+    </div>
+    <div class="collapse-content">
+      <table class="ref-table" style="margin-top:0.7rem">
+        <tr><th>#</th><th>Hand</th><th>Korean</th><th>Cards</th></tr>
+        <tr><td>1</td><td class="rank-prime">Prime Pair</td><td>Sam-pal-gwang-ddang</td><td>Red 3 + Red 8</td></tr>
+        <tr><td>2</td><td class="rank-superior">Superior Pair</td><td>Gwang-ddang</td><td>Red 1+Red 8, Red 1+Red 3</td></tr>
+        <tr><td>3</td><td class="rank-tenpair">Ten Pair</td><td>Jang-ddang</td><td>10 + 10</td></tr>
+        <tr><td>4</td><td class="rank-pair">9-1 Pair</td><td>Ddang</td><td>Same number pair</td></tr>
+        <tr><td>5</td><td class="rank-named">One-Two (Ali)</td><td>Ali</td><td>1 + 2</td></tr>
+        <tr><td>6</td><td class="rank-named">One-Four (Doksa)</td><td>Doksa</td><td>1 + 4</td></tr>
+        <tr><td>7</td><td class="rank-named">One-Nine (Gubbing)</td><td>Gubbing</td><td>1 + 9</td></tr>
+        <tr><td>8</td><td class="rank-named">One-Ten (Jangbbing)</td><td>Jangbbing</td><td>1 + 10</td></tr>
+        <tr><td>9</td><td class="rank-named">Four-Ten (Jangsa)</td><td>Jangsa</td><td>4 + 10</td></tr>
+        <tr><td>10</td><td class="rank-named">Four-Six (Saeryuk)</td><td>Saeryuk</td><td>4 + 6</td></tr>
+        <tr><td>11</td><td class="rank-nine">Perfect Nine</td><td>Gabo</td><td>Sum = 9 or 19</td></tr>
+        <tr><td>12</td><td class="rank-points">8-1 Points</td><td>Kkeut</td><td>Last digit of sum</td></tr>
+        <tr><td>13</td><td class="rank-zero">Zero</td><td>Mangtong</td><td>Sum = 10/20 (no named hand)</td></tr>
+        <tr><td colspan="4" style="color:var(--accent);padding-top:0.5rem">Special Hands</td></tr>
+        <tr><td>*</td><td class="rank-special">Warden</td><td>Gusa</td><td>4 + 9 — rematch below Ali</td></tr>
+        <tr><td>*</td><td class="rank-special">High Warden</td><td>Mungtungguri Gusa</td><td>Red 4 + Red 9 — rematch below 9 Pair</td></tr>
+        <tr><td>*</td><td class="rank-special">Judge</td><td>Ddaengjabi</td><td>3 + 7 — beats 1-9 Pair, else Zero</td></tr>
+        <tr><td>*</td><td class="rank-special">Executor</td><td>Amhaeng-eosa</td><td>Red 4 + Red 7 — beats Superior Pair, else 1 Pt</td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+// =========== DECK ===========
+const ALL_CARDS = [];
+for (let n = 1; n <= 10; n++) {
+  ALL_CARDS.push({ num: n, color: 'red' });
+  ALL_CARDS.push({ num: n, color: 'yellow' });
+}
+function cardId(c) { return c.color[0] + c.num; }
+function cardMatch(a, b) { return a.num === b.num && a.color === b.color; }
+
+// =========== STATE ===========
+let playerCards = [];
+let numOpponents = 1;
+let oppCards = [null, null, null];   // visible cards (slot 1)
+let oppCards2 = [null, null, null];  // hidden cards (slot 2, cheat mode only)
+let cheatMode = false;
+
+// =========== HAND EVALUATION ===========
+function evaluateHand(c1, c2) {
+  const n = [c1.num, c2.num].sort((a,b) => a - b);
+  const lo = n[0], hi = n[1];
+  const bothRed = c1.color === 'red' && c2.color === 'red';
+
+  if (bothRed && lo === 3 && hi === 8)
+    return { type: 'PRIME', rank: 1500, name: 'Prime Pair', korean: 'Sam-pal-gwang-ddang', cls: 'rank-prime' };
+  if (bothRed && lo === 1 && hi === 8)
+    return { type: 'SUPERIOR', rank: 1400, name: 'Superior Pair (1-8)', korean: 'Gwang-ddang', cls: 'rank-superior' };
+  if (bothRed && lo === 1 && hi === 3)
+    return { type: 'SUPERIOR', rank: 1390, name: 'Superior Pair (1-3)', korean: 'Gwang-ddang', cls: 'rank-superior' };
+  if (bothRed && lo === 4 && hi === 7)
+    return { type: 'EXECUTOR', rank: -1, name: 'Executor', korean: 'Amhaeng-eosa', cls: 'rank-special' };
+  if (bothRed && lo === 4 && hi === 9)
+    return { type: 'HIGH_WARDEN', rank: -1, name: 'High Warden', korean: 'Mungtungguri Gusa', cls: 'rank-special' };
+  if (lo === 3 && hi === 7)
+    return { type: 'JUDGE', rank: -1, name: 'Judge', korean: 'Ddaengjabi', cls: 'rank-special' };
+  if (lo === 4 && hi === 9)
+    return { type: 'WARDEN', rank: -1, name: 'Warden', korean: 'Gusa', cls: 'rank-special' };
+  if (lo === 10 && hi === 10)
+    return { type: 'TEN_PAIR', rank: 1300, name: 'Ten Pair', korean: 'Jang-ddang', cls: 'rank-tenpair' };
+  if (lo === hi)
+    return { type: 'PAIR', rank: 1200 + lo, name: `${lo} Pair`, korean: `${lo}-Ddang`, cls: 'rank-pair' };
+  if (lo === 1 && hi === 2) return { type: 'NAMED', rank: 1100, name: 'One-Two', korean: 'Ali', cls: 'rank-named' };
+  if (lo === 1 && hi === 4) return { type: 'NAMED', rank: 1090, name: 'One-Four', korean: 'Doksa', cls: 'rank-named' };
+  if (lo === 1 && hi === 9) return { type: 'NAMED', rank: 1080, name: 'One-Nine', korean: 'Gubbing', cls: 'rank-named' };
+  if (lo === 1 && hi === 10) return { type: 'NAMED', rank: 1070, name: 'One-Ten', korean: 'Jangbbing', cls: 'rank-named' };
+  if (lo === 4 && hi === 10) return { type: 'NAMED', rank: 1060, name: 'Four-Ten', korean: 'Jangsa', cls: 'rank-named' };
+  if (lo === 4 && hi === 6) return { type: 'NAMED', rank: 1050, name: 'Four-Six', korean: 'Saeryuk', cls: 'rank-named' };
+
+  const pts = (lo + hi) % 10;
+  if (pts === 9) return { type: 'NINE', rank: 1040, name: 'Perfect Nine', korean: 'Gabo', cls: 'rank-nine' };
+  if (pts === 0) return { type: 'ZERO', rank: 0, name: 'Zero', korean: 'Mangtong', cls: 'rank-zero' };
+  return { type: 'POINTS', rank: pts * 10, name: `${pts} Points`, korean: `${pts}-Kkeut`, cls: 'rank-points' };
+}
+
+// =========== MATCHUP ===========
+function resolveMatchup(hA, hB) {
+  if (hA.type === 'PRIME' && hB.type === 'PRIME') return 0;
+  if (hA.type === 'PRIME') return 1;
+  if (hB.type === 'PRIME') return -1;
+
+  if (hA.type === 'EXECUTOR' && hB.type === 'SUPERIOR') return 1;
+  if (hB.type === 'EXECUTOR' && hA.type === 'SUPERIOR') return -1;
+
+  if (hA.type === 'HIGH_WARDEN') {
+    if (hB.type === 'TEN_PAIR') return -1;
+    if (hB.type === 'SUPERIOR') return -1;
+    if (hB.type === 'PAIR' && hB.rank >= 1209) return -1;
+    return 0.5;
+  }
+  if (hB.type === 'HIGH_WARDEN') {
+    if (hA.type === 'TEN_PAIR') return 1;
+    if (hA.type === 'SUPERIOR') return 1;
+    if (hA.type === 'PAIR' && hA.rank >= 1209) return 1;
+    return 0.5;
+  }
+
+  const effA = effectiveRank(hA, hB);
+  const effB = effectiveRank(hB, hA);
+
+  if (hA.type === 'WARDEN') {
+    if (hB.type === 'WARDEN') return 0.5;
+    if (effB >= 1100) return 30 > effB ? 1 : (30 < effB ? -1 : 0);
+    return 0.5;
+  }
+  if (hB.type === 'WARDEN') {
+    if (effA >= 1100) return effA > 30 ? 1 : (effA < 30 ? -1 : 0);
+    return 0.5;
+  }
+
+  if (effA > effB) return 1;
+  if (effA < effB) return -1;
+  return 0;
+}
+
+function effectiveRank(hand, opp) {
+  if (hand.type === 'JUDGE') {
+    if (opp.type === 'PAIR') return 1299;
+    return 0;
+  }
+  if (hand.type === 'EXECUTOR') {
+    if (opp.type === 'SUPERIOR') return 1450;
+    return 10;
+  }
+  if (hand.rank === -1) return 0;
+  return hand.rank;
+}
+
+// =========== USED CARDS ===========
+function getUsedCards() {
+  const used = new Set();
+  for (const c of playerCards) used.add(cardId(c));
+  for (let i = 0; i < numOpponents; i++) {
+    if (oppCards[i]) used.add(cardId(oppCards[i]));
+    if (cheatMode && oppCards2[i]) used.add(cardId(oppCards2[i]));
+  }
+  return used;
+}
+
+function getRemainingCards() {
+  const used = getUsedCards();
+  return ALL_CARDS.filter(c => !used.has(cardId(c)));
+}
+
+// =========== JOINT PROBABILITY ENGINE ===========
+// Enumerates all valid joint card assignments across opponents (no card reuse).
+// Each opponent is: fully known (2 cards), partially known (1 visible), or unknown (0 cards).
+// We recursively assign hidden cards from the shared remaining pool.
+
+function calcWinProb(myHand) {
+  const remaining = getRemainingCards();
+
+  // Build opponent info: { visible, hidden, known (both cards set) }
+  const opps = [];
+  for (let i = 0; i < numOpponents; i++) {
+    const v1 = oppCards[i];
+    const v2 = cheatMode ? oppCards2[i] : null;
+    if (v1 && v2) {
+      opps.push({ type: 'known', hand: evaluateHand(v1, v2), visible: v1 });
+    } else if (v1) {
+      opps.push({ type: 'partial', visible: v1 });
+    } else {
+      opps.push({ type: 'unknown' });
+    }
+  }
+
+  // Per-opponent detail tracking
+  const oppDetailMaps = opps.map(() => ({}));
+  const oppWins = opps.map(() => 0);
+  const oppTotal = opps.map(() => 0);
+  let totalScenarios = 0, overallWins = 0;
+
+  // Recursive enumeration: assign hidden cards to each opponent from pool
+  // assignments[i] = evaluated hand for opponent i
+  const assignments = new Array(numOpponents);
+
+  function enumerate(oppIdx, poolIndices) {
+    if (oppIdx === numOpponents) {
+      // All opponents assigned — evaluate this scenario
+      totalScenarios++;
+      let iWinAll = true;
+      for (let i = 0; i < numOpponents; i++) {
+        const outcome = resolveMatchup(myHand, assignments[i]);
+        const w = outcome === 1 ? 1 : outcome === 0.5 ? 0.5 : outcome === 0 ? 0.5 : 0;
+        if (w < 1) iWinAll = false;
+        // Track per-opponent marginals
+        oppWins[i] += w;
+        oppTotal[i]++;
+        const key = assignments[i].name;
+        if (!oppDetailMaps[i][key]) oppDetailMaps[i][key] = { count: 0, cls: assignments[i].cls };
+        oppDetailMaps[i][key].count++;
+      }
+      // For overall, check if we beat ALL opponents in this scenario
+      let winAll = 1;
+      for (let i = 0; i < numOpponents; i++) {
+        const outcome = resolveMatchup(myHand, assignments[i]);
+        winAll *= outcome === 1 ? 1 : outcome === 0.5 ? 0.5 : outcome === 0 ? 0.5 : 0;
+      }
+      overallWins += winAll;
+      return;
+    }
+
+    const opp = opps[oppIdx];
+    if (opp.type === 'known') {
+      assignments[oppIdx] = opp.hand;
+      enumerate(oppIdx + 1, poolIndices);
+    } else if (opp.type === 'partial') {
+      // Assign 1 hidden card from pool
+      for (let i = 0; i < poolIndices.length; i++) {
+        const card = remaining[poolIndices[i]];
+        assignments[oppIdx] = evaluateHand(opp.visible, card);
+        const newPool = poolIndices.filter((_, j) => j !== i);
+        enumerate(oppIdx + 1, newPool);
+      }
+    } else {
+      // Unknown: assign 2 cards from pool
+      for (let i = 0; i < poolIndices.length; i++) {
+        for (let j = i + 1; j < poolIndices.length; j++) {
+          assignments[oppIdx] = evaluateHand(remaining[poolIndices[i]], remaining[poolIndices[j]]);
+          const newPool = poolIndices.filter((_, k) => k !== i && k !== j);
+          enumerate(oppIdx + 1, newPool);
+        }
+      }
+    }
+  }
+
+  const poolIndices = remaining.map((_, i) => i);
+  enumerate(0, poolIndices);
+
+  // Build results
+  const oppResults = [];
+  for (let i = 0; i < numOpponents; i++) {
+    const details = Object.entries(oppDetailMaps[i])
+      .map(([name, d]) => ({ name, count: d.count, pct: (d.count / oppTotal[i] * 100), cls: d.cls }))
+      .sort((a, b) => b.count - a.count);
+    oppResults.push({
+      winRate: oppTotal[i] > 0 ? oppWins[i] / oppTotal[i] : 0.5,
+      total: oppTotal[i],
+      details
+    });
+  }
+
+  const overall = totalScenarios > 0 ? overallWins / totalScenarios : 0;
+  return { overall, oppResults };
+}
+
+// =========== THREATS ===========
+function getThreats(myHand) {
+  const remaining = getRemainingCards();
+  const beatsYou = [], youBeat = [];
+  const seen = new Set();
+  for (let a = 0; a < remaining.length; a++) {
+    for (let b = a + 1; b < remaining.length; b++) {
+      const h = evaluateHand(remaining[a], remaining[b]);
+      if (seen.has(h.name)) continue;
+      seen.add(h.name);
+      const o = resolveMatchup(myHand, h);
+      if (o === -1) beatsYou.push(h);
+      else if (o === 1) youBeat.push(h);
+    }
+  }
+  beatsYou.sort((a, b) => (b.rank === -1 ? 9999 : b.rank) - (a.rank === -1 ? 9999 : a.rank));
+  return { beatsYou };
+}
+
+// =========== CHEAT ADVISOR ===========
+// For each possible card you pick, jointly enumerate your random second card
+// and any unknown opponent hidden cards from the shared pool.
+function calcCheatAdvisor() {
+  const remaining = getRemainingCards();
+  if (remaining.length < 2) return [];
+
+  // Build opponent info
+  const opps = [];
+  for (let i = 0; i < numOpponents; i++) {
+    if (oppCards[i] && oppCards2[i]) {
+      opps.push({ type: 'known', hand: evaluateHand(oppCards[i], oppCards2[i]) });
+    } else if (oppCards[i]) {
+      opps.push({ type: 'partial', visible: oppCards[i] });
+    } else {
+      opps.push({ type: 'unknown' });
+    }
+  }
+
+  const picks = [];
+  for (let p = 0; p < remaining.length; p++) {
+    const pick = remaining[p];
+    // Pool after removing picked card
+    const pool = remaining.filter((_, idx) => idx !== p);
+    const poolIndices = pool.map((_, i) => i);
+
+    let totalWin = 0, totalScenarios = 0;
+    const handCounts = {};
+
+    // First, assign my random second card from pool, then jointly assign opponent hidden cards
+    for (let s = 0; s < pool.length; s++) {
+      const myHand = evaluateHand(pick, pool[s]);
+      // Pool after removing my second card
+      const innerPool = poolIndices.filter(i => i !== s);
+
+      // Recursively assign opponent hidden cards
+      const oppHands = new Array(numOpponents);
+      function enumOpps(oi, pPool) {
+        if (oi === numOpponents) {
+          totalScenarios++;
+          let winAll = 1;
+          for (let i = 0; i < numOpponents; i++) {
+            const outcome = resolveMatchup(myHand, oppHands[i]);
+            winAll *= outcome === 1 ? 1 : outcome === 0.5 ? 0.5 : outcome === 0 ? 0.5 : 0;
+          }
+          totalWin += winAll;
+          return;
+        }
+        const opp = opps[oi];
+        if (opp.type === 'known') {
+          oppHands[oi] = opp.hand;
+          enumOpps(oi + 1, pPool);
+        } else if (opp.type === 'partial') {
+          for (let i = 0; i < pPool.length; i++) {
+            oppHands[oi] = evaluateHand(opp.visible, pool[pPool[i]]);
+            enumOpps(oi + 1, pPool.filter((_, j) => j !== i));
+          }
+        } else {
+          for (let i = 0; i < pPool.length; i++) {
+            for (let j = i + 1; j < pPool.length; j++) {
+              oppHands[oi] = evaluateHand(pool[pPool[i]], pool[pPool[j]]);
+              enumOpps(oi + 1, pPool.filter((_, k) => k !== i && k !== j));
+            }
+          }
+        }
+      }
+      enumOpps(0, innerPool);
+
+      // Track hand distribution
+      const hName = myHand.name;
+      if (!handCounts[hName]) handCounts[hName] = { count: 0, hand: myHand };
+      handCounts[hName].count++;
+    }
+
+    const topHands = Object.values(handCounts).sort((a, b) => b.count - a.count).slice(0, 3);
+    const totalSeconds = pool.length; // for hand distribution percentages
+
+    picks.push({
+      card: pick,
+      winPct: totalScenarios > 0 ? (totalWin / totalScenarios) * 100 : 0,
+      topHands,
+      totalCombos: totalSeconds
+    });
+  }
+
+  picks.sort((a, b) => b.winPct - a.winPct);
+  return picks;
+}
+
+function updateCheatAdvisor() {
+  const card = document.getElementById('cheat-card');
+  if (!cheatMode) {
+    card.style.display = 'none';
+    return;
+  }
+
+  // Need at least one opponent with both cards set
+  let hasOppHand = false;
+  for (let i = 0; i < numOpponents; i++) {
+    if (oppCards[i] && oppCards2[i]) { hasOppHand = true; break; }
+  }
+  if (!hasOppHand) {
+    card.style.display = 'block';
+    document.getElementById('cheat-advisor-content').innerHTML = '<p class="info-text">Select both cards for at least one opponent to see recommendations.</p>';
+    return;
+  }
+
+  card.style.display = 'block';
+  const picks = calcCheatAdvisor();
+  if (picks.length === 0) {
+    document.getElementById('cheat-advisor-content').innerHTML = '<p class="info-text">No cards available.</p>';
+    return;
+  }
+
+  const maxPct = picks[0].winPct;
+  let html = '<table class="cheat-pick-table"><tr><th>Pick</th><th>Possible Hands</th><th>Avg Win %</th></tr>';
+
+  for (let i = 0; i < picks.length; i++) {
+    const p = picks[i];
+    const isBest = i === 0 || p.winPct === maxPct;
+    const cL = p.card.color === 'red' ? 'R' : 'Y';
+    const barW = Math.max(2, (p.winPct / 100) * 120);
+    const barColor = p.winPct >= 65 ? 'var(--green)' : p.winPct >= 40 ? 'var(--accent)' : 'var(--red)';
+
+    const handsStr = p.topHands.map(h => {
+      const pct = (h.count / p.totalCombos * 100).toFixed(0);
+      return `<span class="${h.hand.cls}">${h.hand.name}</span> ${pct}%`;
+    }).join(', ');
+
+    html += `<tr class="${isBest ? 'best-pick' : ''}">`;
+    html += `<td>${isBest ? '<span class="crown">&#9733;</span>' : ''}${cL}${p.card.num}</td>`;
+    html += `<td>${handsStr}</td>`;
+    html += `<td>${p.winPct.toFixed(1)}% <span class="pick-bar" style="width:${barW}px;background:${barColor}"></span></td>`;
+    html += `</tr>`;
+  }
+  html += '</table>';
+  document.getElementById('cheat-advisor-content').innerHTML = html;
+}
+
+// =========== UI ===========
+function toggleCheatMode() {
+  cheatMode = !cheatMode;
+  const tog = document.getElementById('cheat-toggle');
+  tog.classList.toggle('active', cheatMode);
+  if (!cheatMode) {
+    oppCards2 = [null, null, null];
+  }
+  refresh();
+}
+
+function renderPlayerGrid() {
+  const grid = document.getElementById('player-grid');
+  const playerCard = grid.closest('.card');
+  const used = getUsedCards();
+  const selIds = new Set(playerCards.map(cardId));
+  grid.innerHTML = '';
+
+  const maxCards = 2;
+  document.getElementById('player-instructions').textContent = cheatMode
+    ? 'After reviewing the advisor, select your 2 cards to see the full matchup.'
+    : 'Tap to select your 2 cards. Tap a selected card to remove it.';
+
+  ['red', 'yellow'].forEach(color => {
+    const row = document.createElement('div');
+    row.className = 'card-row';
+    const lbl = document.createElement('span');
+    lbl.className = 'card-row-label ' + (color === 'red' ? 'rl' : 'yl');
+    lbl.textContent = color === 'red' ? 'R' : 'Y';
+    row.appendChild(lbl);
+
+    for (let n = 1; n <= 10; n++) {
+      const c = { num: n, color };
+      const id = cardId(c);
+      const btn = document.createElement('button');
+      btn.className = `card-btn ${color}-card`;
+      btn.textContent = n;
+      if (selIds.has(id)) {
+        btn.classList.add('selected');
+        btn.onclick = () => { playerCards = playerCards.filter(x => cardId(x) !== id); refresh(); };
+      } else if (used.has(id)) {
+        btn.classList.add('used');
+      } else {
+        btn.onclick = () => {
+          if (playerCards.length >= maxCards) return;
+          playerCards.push(c);
+          refresh();
+        };
+      }
+      row.appendChild(btn);
+    }
+    grid.appendChild(row);
+  });
+}
+
+function renderPlayerHand() {
+  const el = document.getElementById('player-hand');
+  let html = '';
+
+  for (let i = 0; i < 2; i++) {
+    if (i < playerCards.length) {
+      const c = playerCards[i];
+      html += `<div class="hand-card ${c.color}-card" title="Click to remove" onclick="removePlayerCard(${i})">${c.num}</div>`;
+    } else {
+      html += `<div class="hand-card empty">?</div>`;
+    }
+  }
+
+  if (playerCards.length === 2) {
+    const hand = evaluateHand(playerCards[0], playerCards[1]);
+    html += `<span class="hand-arrow">&rarr;</span>
+      <div class="hand-result-inline">
+        <span class="hand-name ${hand.cls}">${hand.name}</span>
+        <span class="hand-korean">${hand.korean}</span>
+      </div>`;
+  }
+
+  el.innerHTML = html;
+}
+
+function removePlayerCard(idx) {
+  playerCards.splice(idx, 1);
+  refresh();
+}
+
+function clearAll() {
+  playerCards = [];
+  oppCards = [null, null, null];
+  oppCards2 = [null, null, null];
+  refresh();
+}
+
+function renderOpponents() {
+  const area = document.getElementById('opponents-area');
+  const used = getUsedCards();
+  area.innerHTML = '';
+
+  for (let oi = 0; oi < numOpponents; oi++) {
+    const box = document.createElement('div');
+    box.className = 'opp-box';
+
+    const slots = cheatMode ? [
+      { label: 'Card 1', arr: oppCards, idx: oi },
+      { label: 'Card 2', arr: oppCards2, idx: oi }
+    ] : [
+      { label: 'Visible Card', arr: oppCards, idx: oi }
+    ];
+
+    let html = `<h3>Opponent ${oi + 1}</h3>`;
+
+    for (const slot of slots) {
+      const selCard = slot.arr[slot.idx];
+      const selId = selCard ? cardId(selCard) : null;
+      html += `<div class="info-text" style="margin:0.3rem 0 0.15rem">${slot.label}:</div>`;
+
+      ['red', 'yellow'].forEach(color => {
+        html += `<div class="opp-card-row">`;
+        for (let n = 1; n <= 10; n++) {
+          const c = { num: n, color };
+          const id = cardId(c);
+          let cls = `opp-card-btn ${color}-card`;
+          if (id === selId) cls += ' selected';
+          else if (used.has(id)) cls += ' used';
+          html += `<button class="${cls}" data-opp="${oi}" data-slot="${slot.arr === oppCards ? '1' : '2'}" data-num="${n}" data-color="${color}">${n}</button>`;
+        }
+        html += `</div>`;
+      });
+    }
+
+    // Show opponent hand evaluation if both cards known
+    if (cheatMode && oppCards[oi] && oppCards2[oi]) {
+      const oh = evaluateHand(oppCards[oi], oppCards2[oi]);
+      html += `<div class="opp-hand-eval"><span class="${oh.cls}">${oh.name}</span> <span class="hand-korean">${oh.korean}</span></div>`;
+    }
+
+    box.innerHTML = html;
+
+    box.querySelectorAll('.opp-card-btn:not(.used)').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = Number(btn.dataset.opp);
+        const nc = { num: Number(btn.dataset.num), color: btn.dataset.color };
+        const nid = cardId(nc);
+        const arr = btn.dataset.slot === '2' ? oppCards2 : oppCards;
+        if (arr[idx] && cardId(arr[idx]) === nid) {
+          arr[idx] = null;
+        } else {
+          arr[idx] = nc;
+        }
+        refresh();
+      });
+    });
+
+    area.appendChild(box);
+  }
+}
+
+function initOpponentBtns() {
+  const container = document.getElementById('num-opp-btns');
+  [1, 2, 3].forEach(n => {
+    const btn = document.createElement('button');
+    btn.className = 'num-btn' + (n === numOpponents ? ' active' : '');
+    btn.textContent = `${n}`;
+    btn.onclick = () => {
+      numOpponents = n;
+      document.querySelectorAll('.num-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      refresh();
+    };
+    container.appendChild(btn);
+  });
+}
+
+function updateResults() {
+  const resCard = document.getElementById('results-card');
+
+  if (playerCards.length !== 2) {
+    resCard.style.display = 'none';
+    return;
+  }
+
+  resCard.style.display = 'block';
+  const myHand = evaluateHand(playerCards[0], playerCards[1]);
+  const prob = calcWinProb(myHand);
+  const pct = (prob.overall * 100).toFixed(1);
+  const winClass = prob.overall >= 0.65 ? 'win-high' : prob.overall >= 0.4 ? 'win-mid' : 'win-low';
+
+  document.getElementById('results-grid').innerHTML = `
+    <div class="result-box">
+      <div class="label">Your Hand</div>
+      <div class="value ${myHand.cls}" style="font-size:1.2rem">${myHand.name}</div>
+    </div>
+    <div class="result-box">
+      <div class="label">Win Probability</div>
+      <div class="value ${winClass}">${pct}%</div>
+    </div>`;
+
+  let barsHtml = '<div class="prob-bar-container">';
+  for (let i = 0; i < numOpponents; i++) {
+    const r = prob.oppResults[i];
+    const p = (r.winRate * 100).toFixed(1);
+    const color = r.winRate >= 0.65 ? 'var(--green)' : r.winRate >= 0.4 ? 'var(--accent)' : 'var(--red)';
+    let vis = '(unknown)';
+    if (oppCards[i] && oppCards2[i]) {
+      const cL1 = oppCards[i].color === 'red' ? 'R' : 'Y';
+      const cL2 = oppCards2[i].color === 'red' ? 'R' : 'Y';
+      vis = `(${cL1}${oppCards[i].num} + ${cL2}${oppCards2[i].num})`;
+    } else if (oppCards[i]) {
+      vis = `(shows ${oppCards[i].color === 'red' ? 'R' : 'Y'}${oppCards[i].num})`;
+    }
+
+    barsHtml += `
+      <div class="prob-bar-label"><span>vs Opp ${i+1} ${vis}</span><span>${p}%</span></div>
+      <div class="prob-bar"><div class="prob-bar-fill" style="width:${p}%;background:${color}"></div></div>`;
+
+    if (r.details.length > 0) {
+      const top = r.details.slice(0, 6);
+      barsHtml += `<div class="opp-hands-detail">`;
+      barsHtml += top.map(d => `<span class="${d.cls}">${d.name}</span> ${d.pct.toFixed(0)}%`).join(' &middot; ');
+      barsHtml += `</div>`;
+    }
+  }
+  barsHtml += '</div>';
+  document.getElementById('prob-bars').innerHTML = barsHtml;
+
+  document.getElementById('recommendation').innerHTML = getRecommendation(myHand, prob.overall);
+
+  const threats = getThreats(myHand);
+  let thHtml = '';
+  if (threats.beatsYou.length > 0) {
+    thHtml += `<details class="threats"><summary>Hands that beat you (${threats.beatsYou.length})</summary><ul>`;
+    threats.beatsYou.slice(0, 15).forEach(h => { thHtml += `<li><span class="${h.cls}">${h.name}</span></li>`; });
+    if (threats.beatsYou.length > 15) thHtml += `<li>+${threats.beatsYou.length - 15} more...</li>`;
+    thHtml += '</ul></details>';
+  }
+  document.getElementById('threats-section').innerHTML = thHtml;
+}
+
+function getRecommendation(hand, winProb) {
+  const pct = (winProb * 100).toFixed(0);
+  if (hand.type === 'PRIME') return `<div class="recommendation rec-allin">ALL-IN — Prime Pair is unbeatable. Go all-in.</div>`;
+  if (hand.type === 'SUPERIOR') return `<div class="recommendation rec-allin">ALL-IN — Superior Pair. Only loses to Prime Pair and Executor.</div>`;
+  if (hand.type === 'TEN_PAIR') return `<div class="recommendation rec-allin">ALL-IN — Ten Pair. Only beaten by Prime and Superior Pair.</div>`;
+  if (hand.type === 'JUDGE') return `<div class="recommendation rec-raise">RAISE — Judge beats all 1-9 Pairs but counts as Zero otherwise. Win: ${pct}%.</div>`;
+  if (hand.type === 'EXECUTOR') return `<div class="recommendation rec-call">SITUATIONAL — Executor beats Superior Pair but is only 1 Point otherwise. Win: ${pct}%.</div>`;
+  if (hand.type === 'HIGH_WARDEN') return `<div class="recommendation rec-raise">RAISE — High Warden forces rematch vs most hands. Only loses to Ten Pair. Win: ${pct}%.</div>`;
+  if (hand.type === 'WARDEN') return `<div class="recommendation rec-call">SITUATIONAL — Warden forces rematch vs hands below Ali. Win: ${pct}%.</div>`;
+  if (hand.type === 'ZERO') return `<div class="recommendation rec-fold">FOLD — Zero (Mangtong) is the weakest hand.</div>`;
+
+  if (hand.rank >= 1200) {
+    if (winProb >= 0.7) return `<div class="recommendation rec-allin">ALL-IN — ${hand.name} with ${pct}% win chance.</div>`;
+    return `<div class="recommendation rec-raise">RAISE — ${hand.name} is strong. Raise confidently.</div>`;
+  }
+  if (hand.rank >= 1040) {
+    if (winProb >= 0.65) return `<div class="recommendation rec-raise">RAISE — ${hand.name} (${pct}%). Strong hand.</div>`;
+    if (winProb >= 0.45) return `<div class="recommendation rec-call">CALL — ${hand.name} (${pct}%). Decent hand.</div>`;
+    return `<div class="recommendation rec-fold">CAUTIOUS — ${hand.name} but only ${pct}% win. Consider folding.</div>`;
+  }
+  if (winProb >= 0.65) return `<div class="recommendation rec-raise">RAISE — ${hand.name} (${pct}%). Worth a raise.</div>`;
+  if (winProb >= 0.45) return `<div class="recommendation rec-call">CALL/BLUFF — ${hand.name} (${pct}%). Call or try a bluff.</div>`;
+  if (hand.rank <= 20) return `<div class="recommendation rec-fold">FOLD — ${hand.name} is very weak (${pct}%).</div>`;
+  return `<div class="recommendation rec-fold">FOLD — ${hand.name} with only ${pct}% win chance.</div>`;
+}
+
+function toggleRef() {
+  const card = document.getElementById('ref-card');
+  const btn = card.querySelector('.collapse-btn');
+  card.classList.toggle('collapsed');
+  btn.textContent = card.classList.contains('collapsed') ? 'Show' : 'Hide';
+}
+
+function refresh() {
+  renderPlayerGrid();
+  renderPlayerHand();
+  renderOpponents();
+  updateCheatAdvisor();
+  updateResults();
+}
+
+// =========== INIT ===========
+initOpponentBtns();
+refresh();
+</script>
+</body>
+</html>
