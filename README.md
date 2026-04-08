@@ -1,5 +1,5 @@
 # Duo-CD
-Duo calculator for Crimson Desert created with Claude Code.
+Duo calculator for Crimson Desert created with Claude Code (Opus 4.6).
 
 # How it works
 
