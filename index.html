@@ -158,6 +158,36 @@
   .pick-bar { display: inline-block; height: 6px; border-radius: 3px; vertical-align: middle; margin-left: 0.3rem; }
   .crown { color: var(--gold); margin-right: 0.2rem; }
 
+  /* Stash card */
+  .stash-section { margin-top: 0.6rem; }
+  .stash-display { display: flex; gap: 0.8rem; align-items: center; margin: 0.5rem 0; flex-wrap: wrap; }
+  .stash-card {
+    width: 56px; height: 70px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.4rem; font-weight: bold; cursor: pointer; border: 2px dashed;
+    transition: all 0.12s; position: relative;
+  }
+  .stash-card.empty { border-color: var(--border); color: var(--text2); background: var(--bg3); }
+  .stash-card.red-card { border-style: solid; border-color: var(--redlt); background: linear-gradient(135deg, #3a1820, #2a1018); color: var(--redlt); }
+  .stash-card.yellow-card { border-style: solid; border-color: var(--yellowlt); background: linear-gradient(135deg, #3a3018, #2a2410); color: var(--yellowlt); }
+  .stash-card:not(.empty):hover { opacity: 0.7; }
+  .stash-badge {
+    position: absolute; top: -6px; right: -6px; font-size: 0.55rem; padding: 0.05rem 0.25rem;
+    background: #c06040; color: #fff; border-radius: 3px; font-weight: bold;
+  }
+  .stash-label { font-size: 0.85rem; color: var(--text2); }
+
+  /* Swap advisor */
+  .swap-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 0.5rem; }
+  .swap-table th { color: var(--accent); font-weight: 600; padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--border); text-align: left; }
+  .swap-table td { padding: 0.4rem 0.5rem; border-bottom: 1px solid rgba(74,58,64,0.5); }
+  .swap-table tr.swap-best { background: rgba(90,154,90,0.12); }
+  .swap-table tr.swap-best td { color: var(--green); font-weight: 600; }
+  .swap-arrow { color: var(--accent); font-size: 0.9rem; }
+  .swap-rec { margin-top: 0.5rem; padding: 0.6rem; border-radius: 8px; text-align: center; font-size: 0.9rem; font-weight: bold; }
+  .swap-hold { background: rgba(168,152,136,0.1); border: 1px solid var(--text2); color: var(--text); }
+  .swap-do { background: rgba(90,154,90,0.15); border: 1px solid var(--green); color: var(--green); }
+
   /* Reference */
   table.ref-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
   .ref-table th, .ref-table td { padding: 0.35rem 0.5rem; border-bottom: 1px solid var(--border); text-align: left; }
@@ -200,6 +230,23 @@
     <div id="opponents-area"></div>
   </div>
 
+
+  <!-- STASHED CARD (cheat mode) -->
+  <div class="card" id="stash-card" style="display:none">
+    <h2>Hidden Card <span class="cheat-badge">STASH</span></h2>
+    <p class="info-text" style="margin-bottom:0.4rem">Hide a card from the deck. You can swap it into your hand during "Change Hand" window.</p>
+    <div class="stash-display" id="stash-display"></div>
+    <div class="stash-section">
+      <div class="card-grid" id="stash-grid"></div>
+    </div>
+  </div>
+
+  <!-- SWAP ADVISOR -->
+  <div class="card" id="swap-card" style="display:none">
+    <h2>Swap Advisor <span class="cheat-badge">STASH</span></h2>
+    <p class="info-text" style="margin-bottom:0.4rem">Should you swap your stashed card into your hand?</p>
+    <div id="swap-advisor-content"></div>
+  </div>
 
   <!-- CHEAT ADVISOR -->
   <div class="card" id="cheat-card" style="display:none">
@@ -265,6 +312,7 @@ let numOpponents = 1;
 let oppCards = [null, null, null];   // visible cards (slot 1)
 let oppCards2 = [null, null, null];  // hidden cards (slot 2, cheat mode only)
 let cheatMode = false;
+let stashedCard = null;  // hidden card you keep across rounds
 
 // =========== HAND EVALUATION ===========
 function evaluateHand(c1, c2) {
@@ -360,6 +408,7 @@ function effectiveRank(hand, opp) {
 function getUsedCards() {
   const used = new Set();
   for (const c of playerCards) used.add(cardId(c));
+  if (stashedCard) used.add(cardId(stashedCard));
   for (let i = 0; i < numOpponents; i++) {
     if (oppCards[i]) used.add(cardId(oppCards[i]));
     if (cheatMode && oppCards2[i]) used.add(cardId(oppCards2[i]));
@@ -721,6 +770,7 @@ function clearAll() {
   playerCards = [];
   oppCards = [null, null, null];
   oppCards2 = [null, null, null];
+  stashedCard = null;
   refresh();
 }
 
@@ -895,6 +945,155 @@ function getRecommendation(hand, winProb) {
   return `<div class="recommendation rec-fold">FOLD — ${hand.name} with only ${pct}% win chance.</div>`;
 }
 
+// =========== STASH ===========
+function renderStash() {
+  const stashCardEl = document.getElementById('stash-card');
+  if (!cheatMode) {
+    stashCardEl.style.display = 'none';
+    return;
+  }
+  stashCardEl.style.display = 'block';
+
+  // Display current stashed card
+  const display = document.getElementById('stash-display');
+  if (stashedCard) {
+    display.innerHTML = `
+      <div class="stash-card ${stashedCard.color}-card" onclick="stashedCard=null;refresh();" title="Click to remove">
+        ${stashedCard.num}
+        <span class="stash-badge">HIDDEN</span>
+      </div>
+      <span class="stash-label">Card hidden from the deck. Swap it in during "Change Hand" window.</span>`;
+  } else {
+    display.innerHTML = `
+      <div class="stash-card empty">?</div>
+      <span class="stash-label">Select a card below to hide from the deck.</span>`;
+  }
+
+  // Stash card grid
+  const grid = document.getElementById('stash-grid');
+  const used = getUsedCards();
+  grid.innerHTML = '';
+
+  if (stashedCard) {
+    grid.innerHTML = '';
+    return;
+  }
+
+  ['red', 'yellow'].forEach(color => {
+    const row = document.createElement('div');
+    row.className = 'card-row';
+    const lbl = document.createElement('span');
+    lbl.className = 'card-row-label ' + (color === 'red' ? 'rl' : 'yl');
+    lbl.textContent = color === 'red' ? 'R' : 'Y';
+    row.appendChild(lbl);
+
+    for (let n = 1; n <= 10; n++) {
+      const c = { num: n, color };
+      const id = cardId(c);
+      const btn = document.createElement('button');
+      btn.className = `card-btn ${color}-card`;
+      btn.textContent = n;
+      if (used.has(id)) {
+        btn.classList.add('used');
+      } else {
+        btn.onclick = () => { stashedCard = c; refresh(); };
+      }
+      row.appendChild(btn);
+    }
+    grid.appendChild(row);
+  });
+}
+
+function updateSwapAdvisor() {
+  const swapCard = document.getElementById('swap-card');
+
+  // Show only when: cheat mode, have stashed card, and have 2 player cards
+  if (!cheatMode || !stashedCard || playerCards.length !== 2) {
+    swapCard.style.display = 'none';
+    return;
+  }
+
+  swapCard.style.display = 'block';
+
+  const currentHand = evaluateHand(playerCards[0], playerCards[1]);
+  const swap1Hand = evaluateHand(stashedCard, playerCards[1]); // stash replaces card 1
+  const swap2Hand = evaluateHand(playerCards[0], stashedCard); // stash replaces card 2
+
+  // Calculate win% for each option
+  const currentProb = calcWinProb(currentHand);
+
+  // For swap scenarios, temporarily modify state so getRemainingCards() is correct
+  const origPlayer = [...playerCards];
+  const origStash = stashedCard;
+
+  // Swap 1: stash replaces card 1, card 1 becomes new stash
+  playerCards = [origStash, origPlayer[1]];
+  stashedCard = origPlayer[0];
+  const swap1Prob = calcWinProb(swap1Hand);
+
+  // Swap 2: stash replaces card 2, card 2 becomes new stash
+  playerCards = [origPlayer[0], origStash];
+  stashedCard = origPlayer[1];
+  const swap2Prob = calcWinProb(swap2Hand);
+
+  // Restore original state
+  playerCards = origPlayer;
+  stashedCard = origStash;
+
+  const options = [
+    { label: 'Keep current hand', hand: currentHand, prob: currentProb.overall, action: 'keep',
+      desc: `${fmtCard(playerCards[0])} + ${fmtCard(playerCards[1])}` },
+    { label: `Swap stash ↔ Card 1`, hand: swap1Hand, prob: swap1Prob.overall, action: 'swap1',
+      desc: `${fmtCard(stashedCard)} + ${fmtCard(playerCards[1])}  (new stash: ${fmtCard(playerCards[0])})` },
+    { label: `Swap stash ↔ Card 2`, hand: swap2Hand, prob: swap2Prob.overall, action: 'swap2',
+      desc: `${fmtCard(playerCards[0])} + ${fmtCard(stashedCard)}  (new stash: ${fmtCard(playerCards[1])})` },
+  ];
+
+  // Find best option
+  let bestIdx = 0;
+  for (let i = 1; i < options.length; i++) {
+    if (options[i].prob > options[bestIdx].prob) bestIdx = i;
+  }
+
+  let html = '<table class="swap-table"><tr><th>Option</th><th>Hand</th><th>Win %</th></tr>';
+  for (let i = 0; i < options.length; i++) {
+    const o = options[i];
+    const pct = (o.prob * 100).toFixed(1);
+    const barW = Math.max(2, (o.prob) * 120);
+    const barColor = o.prob >= 0.65 ? 'var(--green)' : o.prob >= 0.4 ? 'var(--accent)' : 'var(--red)';
+    const isBest = i === bestIdx;
+
+    html += `<tr class="${isBest ? 'swap-best' : ''}">`;
+    html += `<td>${isBest ? '<span class="crown">&#9733;</span>' : ''}${o.label}<br><span class="info-text">${o.desc}</span></td>`;
+    html += `<td><span class="${o.hand.cls}">${o.hand.name}</span></td>`;
+    html += `<td>${pct}% <span class="pick-bar" style="width:${barW}px;background:${barColor}"></span></td>`;
+    html += `</tr>`;
+  }
+  html += '</table>';
+
+  // Recommendation
+  if (bestIdx === 0) {
+    html += `<div class="swap-rec swap-hold">HOLD — Keep your current hand. No swap improves your odds.</div>`;
+  } else {
+    const best = options[bestIdx];
+    const gain = ((best.prob - options[0].prob) * 100).toFixed(1);
+    html += `<div class="swap-rec swap-do">SWAP — ${best.label}! Forms <span class="${best.hand.cls}">${best.hand.name}</span> (+${gain}% win).</div>`;
+  }
+
+  document.getElementById('swap-advisor-content').innerHTML = html;
+}
+
+function fmtCard(c) {
+  return (c.color === 'red' ? 'R' : 'Y') + c.num;
+}
+
+function doSwap(idx) {
+  const old = playerCards[idx];
+  playerCards[idx] = stashedCard;
+  stashedCard = old;
+  refresh();
+}
+
 function toggleRef() {
   const card = document.getElementById('ref-card');
   const btn = card.querySelector('.collapse-btn');
@@ -903,10 +1102,12 @@ function toggleRef() {
 }
 
 function refresh() {
+  renderStash();
   renderPlayerGrid();
   renderPlayerHand();
   renderOpponents();
   updateCheatAdvisor();
+  updateSwapAdvisor();
   updateResults();
 }
 
